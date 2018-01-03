@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 from easylambda import __path__
+from easylambda.exceptions import \
+  NoPomException, ProjectInitException
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import makedirs, getcwd
 from os.path import isfile
@@ -8,7 +10,7 @@ from shutil import copyfile
 from xml.etree.ElementTree import \
   fromstring, tostring, parse, SubElement
 from urllib2 import urlopen
-from prettyxml import pretty_print
+from easylambda.prettyxml import pretty_print
 import boto3
 from botocore.exceptions import ClientError, ParamValidationError
 import sys
@@ -41,6 +43,7 @@ def write_xml(root, filename):
   pretty = pretty_print(cleaned)
   with open(filename,'w') as f:
     f.write(pretty)
+  return root
 
 def update_ids(root, groupId, artifactId):
   root.find('pom:groupId',NS).text = groupId
@@ -83,8 +86,7 @@ def add_project_dependencies(root, to_add):
       artifactId.text = artifactIdString
       groupId = SubElement(dep,"groupId")
       groupId.text = "com.amazonaws"
-      PROJECT_DEPENDENCIES.append(dependency)
-
+      
   return root 
 
 def get_lambda_client(args):
@@ -134,8 +136,8 @@ def init_function(args):
     create_function_args['role'] = args['role']
   else:
     raise Exception(
-      "No role found. Please supply a role using --role."
-    )
+            "No role found. Please supply a role using --role."
+          )
   create_function_args['Timeout'] = 40
   create_function_args['MemorySize'] = 512
 
@@ -147,13 +149,6 @@ def init_function(args):
     raise
 
 def init_project(args):
-  project_name = get_project_name()
-
-  if project_name != "":
-    raise Exception(
-        "Project already initialized. Use update-project to add dependencies."
-    )
-
   project_dir = './%s' % args.project_name 
   src_dir = project_dir + '/src/main/java/%s' %\
                             args.group_id.replace('.','/')
@@ -161,30 +156,56 @@ def init_project(args):
   try:
     makedirs(src_dir)
   except OSError as e:
-    raise Exception("Unable to create project directory " +\
-            "within working directory. Project not initialized")
+    raise ProjectInitException(
+            "Unable to create project directory: " +\
+            e.__str__() + "\n Project not initialized."
+          )
+
+  module_path = __path__[0]
+  template_handler_copy_path = src_dir + '/Handler.java'
+  template_pom_copy_path = project_dir + '/pom.xml'
 
   try:
-    copyfile(__path__[0] + "/resources/handler_template",src_dir)
-    copyfile(__path__[0] + "/resources/pom_template",project_dir) 
-  except IOError:
-    # from where?
-    raise Exception("Unable to copy template POM or code from " +\
-                    " ... Project not initialized.")
-
+    copyfile(
+      module_path + "/resources/handler_template", template_handler_copy_path)
+    copyfile(
+      module_path + "/resources/pom_template", template_pom_copy_path) 
+  except IOError as e:
+    raise ProjectInitException(
+            "Unable to copy template POM or code from " +\
+            module_path + "/resources/: " + e + " Project not initialized"
+          )
+  
   # Update template POM with supplied dependencies
   try: 
-    root = read_xml('pom.xml')
+    root = read_xml(template_pom_copy_path)
     root = update_ids(
-                    root,
-                    groupId=args['group-id'],
-                    artifactId=args['artifactId']
-                  )
-    root = add_project_dependencies(root,args.dependencies)
-    write_xml(root, 'pom.xml')
-  except:
-    raise Exception("Unable to modify project pom.xml. " +\
-                      "Project not initialized.")
+             root,
+             groupId=args.group_id,
+             artifactId=args.artifact_id
+           )
+    root = add_project_dependencies(root, args.dependencies)
+    write_xml(root, template_pom_copy_path)
+  except Exception as e:
+    raise ProjectInitException(
+            "Unable to modify project pom.xml. " +\
+            e + "Project not initialized."
+          )
+
+  # Update template Handler with groupId as package name
+  try:
+    with open(template_handler_copy_path, 'r+') as f:
+      f.readline() # seek past existing package name
+      package_line = 'package ' + args.group_id + ';\n'
+      remainder = f.read()
+      f.seek(0)
+      f.write(package_line + remainder)
+      f.truncate()
+  except Exception as e:
+    raise ProjectInitException(
+            "Unable to modify template Handler: " +\
+            e + "Project not initialized."
+          )
 
 def update_function_configuration(args):
   project_name = get_project_name()

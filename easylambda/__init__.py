@@ -1,1 +1,1 @@
-__all__=['easyjava','prettyxml']
+__all__=['easyjava','exceptions','prettyxml']
