@@ -1,0 +1,15 @@
+package easylambda;
+
+import com.amazonaws.services.lambda.runtime.Context;
+
+class Handler {
+  
+  public handler() {
+
+  }
+
+  public void handleRequest(String event, Context context) {
+
+  }
+
+}
