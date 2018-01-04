@@ -4,7 +4,7 @@ from easylambda import __path__
 from easylambda.exceptions import \
   NoPomException, ProjectInitException
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from os import makedirs, getcwd
+from os import makedirs, getcwd, chdir
 from os.path import isfile
 from shutil import copyfile
 from xml.etree.ElementTree import \
@@ -78,15 +78,19 @@ def add_project_dependencies(root, to_add):
   deps = root.find('pom:dependencies',NS)[0]
   project_dependencies = get_project_dependencies()
 
-  for dependency in to_add:
-    if dependency not in project_dependencies:
-      artifactIdString = 'aws-java-sdk-' + dependency
-      dep = SubElement(deps,"dependency")
-      artifactId = SubElement(dep,"artifactId")
-      artifactId.text = artifactIdString
-      groupId = SubElement(dep,"groupId")
-      groupId.text = "com.amazonaws"
-      
+  try:
+    for dependency in to_add:
+      if dependency not in project_dependencies:
+        artifactIdString = 'aws-java-sdk-' + dependency
+        dep = SubElement(deps,"dependency")
+        artifactId = SubElement(dep,"artifactId")
+        artifactId.text = artifactIdString
+        groupId = SubElement(dep,"groupId")
+        groupId.text = "com.amazonaws"
+  except TypeError:
+    # if no supplieddependencies, for loop will raise TypeError
+    pass
+
   return root 
 
 def get_lambda_client(args):
@@ -149,52 +153,68 @@ def init_function(args):
     raise
 
 def init_project(args):
-  project_dir = './%s' % args.project_name 
-  src_dir = project_dir + '/src/main/java/%s' %\
-                            args.group_id.replace('.','/')
+  module_path = __path__[0]
+  project_path = args.project_name
+  src_path = 'src/main/java/%s' %\
+              args.group_id.replace('.','/')
 
   try:
-    makedirs(src_dir)
+    makedirs('/'.join(['.',project_path,src_path]))
   except OSError as e:
     raise ProjectInitException(
             "Unable to create project directory: " +\
-            e.__str__() + "\n Project not initialized."
+            e.__str__() +\
+            "\n Project not initialized."
           )
-
-  module_path = __path__[0]
-  template_handler_copy_path = src_dir + '/Handler.java'
-  template_pom_copy_path = project_dir + '/pom.xml'
 
   try:
     copyfile(
-      module_path + "/resources/handler_template", template_handler_copy_path)
+      '/'.join([module_path,"resources/handler_template"]), 
+      '/'.join(['.',project_path,src_path,'Handler.java'])
+    )
     copyfile(
-      module_path + "/resources/pom_template", template_pom_copy_path) 
+      '/'.join([module_path,"resources/pom_template"]), 
+      '/'.join(['.',project_path,'pom.xml'])
+    ) 
   except IOError as e:
     raise ProjectInitException(
-            "Unable to copy template POM or code from " +\
-            module_path + "/resources/: " + e + " Project not initialized"
+            "Unable to copy template POM or Handler from " +\
+            module_path +\
+            "/resources/: " +\
+            e.__str__() +\
+            "\nProject not initialized"
           )
-  
+ 
+  # change into project directory
+  # add_project_dependencies() assumes working directory = project directory
+  try:
+    chdir('/'.join(['.',project_path]))
+  except:
+    # ???
+    raise
+ 
   # Update template POM with supplied dependencies
-  try: 
-    root = read_xml(template_pom_copy_path)
+  try:
+    root = read_xml('pom.xml')
     root = update_ids(
              root,
              groupId=args.group_id,
              artifactId=args.artifact_id
            )
     root = add_project_dependencies(root, args.dependencies)
-    write_xml(root, template_pom_copy_path)
+    write_xml(root, 'pom.xml')
   except Exception as e:
+    print(e)
     raise ProjectInitException(
-            "Unable to modify project pom.xml. " +\
-            e + "Project not initialized."
+            "Unable to modify project pom.xml: " +\
+            e.__str__() +\
+            "\nProject not initialized."
           )
 
   # Update template Handler with groupId as package name
   try:
-    with open(template_handler_copy_path, 'r+') as f:
+    handler = '/'.join(['.',src_path,'Handler.java'])
+    with open(handler, 'r+') as f:
       f.readline() # seek past existing package name
       package_line = 'package ' + args.group_id + ';\n'
       remainder = f.read()
@@ -204,7 +224,8 @@ def init_project(args):
   except Exception as e:
     raise ProjectInitException(
             "Unable to modify template Handler: " +\
-            e + "Project not initialized."
+            e.__str__() +\
+            "\nProject not initialized."
           )
 
 def update_function_configuration(args):
@@ -245,8 +266,10 @@ def update_project(args):
     root = add_project_dependencies(root,args.dependencies)
     write_xml(root, 'pom.xml')
   except:
-    raise Exception("Unable to modify project pom.xml. " +\
-                      "Dependencies not added.")
+    raise Exception(
+            "Unable to modify project pom.xml. " +\
+            "Dependencies not added."
+          )
 
 def get_project_name():
   if isfile("pom.xml"):
@@ -312,20 +335,20 @@ def main():
     )
   parser_init_project.add_argument(
       '--project-name',
-      help='Name of the project.'
+      help='Name of the project.',
+      default='easylambda_demo'
     )
 
   # The default group-id and artifact-id match those in the template POM
   # distributed with easylambda.
   parser_init_project.add_argument(
       '--group-id',
-      help='Used as package name (default \'easylambda\').',
-      default='easylambda'
+      help='Used as package name.',
+      default='com.example'
     )
   parser_init_project.add_argument(
       '--artifact-id',
-      help='Used as jar name, and should be same as project name\
-          (default \'demo\').',
+      help='Used as jar name, and should be same as project name.',
       default='demo'
     )
   parser_init_project.add_argument(
@@ -333,7 +356,8 @@ def main():
       help='A list of AWS SDK dependencies, e.g.\
              \'s3\', \'dynamodb\', \'kinesis\'.',
       nargs='*', 
-      choices=valid_aws_sdk_dependencies
+      choices=valid_aws_sdk_dependencies,
+      default=[]
     )
   parser_init_project.set_defaults(process=init_project)
 
