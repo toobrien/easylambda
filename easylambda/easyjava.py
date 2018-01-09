@@ -2,7 +2,8 @@
 
 from easylambda import __path__
 from easylambda.exceptions import \
-  NoPomException, ProjectInitException
+  NoPomException, InitProjectException,\
+  InitFunctionException
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import makedirs, getcwd, chdir
 from os.path import isfile
@@ -22,12 +23,6 @@ BOM_URL='https://raw.githubusercontent.com/aws/aws-sdk-java/master/aws-java-sdk-
 NS = {'pom':'http://maven.apache.org/POM/4.0.0'}
 BOM_PATH='./pom:dependencyManagement/pom:dependencies/pom:dependency'
 POM_PATH='./pom:dependencies/pom:dependency'
-
-class NoPomException(Exception):
-   msg = 'No POM found in working directory. Are you in a project directory?'
-   def __init__(self, msg):
-     if msg:
-       self.msg = msg
 
 def read_xml(filename):
   xml_string = ''
@@ -75,7 +70,7 @@ def get_aws_dependencies(root,path):
 
 # Assumes dependency_list is valid. Validation occurs in arg parser.
 def add_project_dependencies(root, to_add):
-  deps = root.find('pom:dependencies',NS)[0]
+  deps = root.find('pom:dependencies',NS)
   project_dependencies = get_project_dependencies()
 
   try:
@@ -132,14 +127,16 @@ def init_function(args):
   create_function_args['Handler'] = ids['groupId'] +\
                                     '.' +\
                                     'Handler::handleRequest'
-  create_function_args['ZipFile'] = get_zip_file_bytes(ids['artifactId'])
-  create_function_args['FunctionName'] = PROJECT_NAME
+  create_function_args['Code'] = { 
+    'ZipFile': get_zip_file_bytes(ids['artifactId']) 
+  }
+  create_function_args['FunctionName'] = project_name
   create_function_args['Runtime'] = 'java8'
 
   if ('role' in args):
-    create_function_args['role'] = args['role']
+    create_function_args['Role'] = args.role
   else:
-    raise Exception(
+    raise InitFunctionException(
             "No role found. Please supply a role using --role."
           )
   create_function_args['Timeout'] = 40
@@ -148,9 +145,8 @@ def init_function(args):
   # arguments ready, create the function
   try:
     lda.create_function(**create_function_args)
-  except (ClientError, ParamValidationError):
-    print("Function not created.")
-    raise
+  except (ClientError, ParamValidationError) as e:
+    raise InitFunctionException("Function not created: " + e.__str__())
 
 def init_project(args):
   module_path = __path__[0]
@@ -161,7 +157,7 @@ def init_project(args):
   try:
     makedirs('/'.join(['.',project_path,src_path]))
   except OSError as e:
-    raise ProjectInitException(
+    raise InitProjectException(
             "Unable to create project directory: " +\
             e.__str__() +\
             "\n Project not initialized."
@@ -177,7 +173,7 @@ def init_project(args):
       '/'.join(['.',project_path,'pom.xml'])
     ) 
   except IOError as e:
-    raise ProjectInitException(
+    raise InitProjectException(
             "Unable to copy template POM or Handler from " +\
             module_path +\
             "/resources/: " +\
@@ -205,7 +201,7 @@ def init_project(args):
     write_xml(root, 'pom.xml')
   except Exception as e:
     print(e)
-    raise ProjectInitException(
+    raise InitProjectException(
             "Unable to modify project pom.xml: " +\
             e.__str__() +\
             "\nProject not initialized."
@@ -222,7 +218,7 @@ def init_project(args):
       f.write(package_line + remainder)
       f.truncate()
   except Exception as e:
-    raise ProjectInitException(
+    raise InitProjectException(
             "Unable to modify template Handler: " +\
             e.__str__() +\
             "\nProject not initialized."
@@ -250,12 +246,13 @@ def update_function_configuration(args):
 
 def update_function_code(args):
   project_name = get_project_name()
-
+  root = read_xml('pom.xml')
+  ids = get_ids(root)
   lda = get_lambda_client(args)
 
   update_function_code_args = {
     'FunctionName': project_name,
-    'ZipFile': get_zip_file_bytes() 
+    'ZipFile': get_zip_file_bytes(ids['artifactId'])
   }
 
   lda.update_function_code(**update_function_code_args)

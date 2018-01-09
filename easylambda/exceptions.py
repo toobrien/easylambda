@@ -3,9 +3,16 @@ class NoPomException(Exception):
   def __str__(self):
     return self.msg
   def __init__(self):
-    pass
+    if msg:
+      slf.msg = msg 
 
-class ProjectInitException(Exception):
+class InitFunctionException(Exception):
+  def __str__(self):
+    return self.msg
+  def __init__(self, msg):
+    self.msg = msg
+
+class InitProjectException(Exception):
   def __str__(self):
     return self.msg
   def __init__(self, msg):
