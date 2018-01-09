@@ -11,5 +11,6 @@ setup(
         'resources/pom_template',
         'resources/handler_template'
       ]
-  }
+  },
+  scripts=['scripts/easyjava']
 )
