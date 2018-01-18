@@ -1,3 +1,5 @@
+# need to support empty tags
+
 from cStringIO import StringIO
 from enum import Enum
 

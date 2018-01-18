@@ -137,14 +137,15 @@ def init_function(args):
     create_function_args['Role'] = args.role
   else:
     raise InitFunctionException(
-            "No role found. Please supply a role using --role."
+            "No role found. Please supply one with --role."
           )
   create_function_args['Timeout'] = 40
   create_function_args['MemorySize'] = 512
 
   # arguments ready, create the function
   try:
-    lda.create_function(**create_function_args)
+    resp = lda.create_function(**create_function_args)
+    print("Function created: %s" % resp['FunctionArn']) 
   except (ClientError, ParamValidationError) as e:
     raise InitFunctionException("Function not created: " + e.__str__())
 
@@ -178,7 +179,7 @@ def init_project(args):
             module_path +\
             "/resources/: " +\
             e.__str__() +\
-            "\nProject not initialized"
+            "\nProject not initialized."
           )
  
   # change into project directory
@@ -242,7 +243,11 @@ def update_function_configuration(args):
         'Mode': args.tracing_config
     }
   
-  lda.update_function_configuration(**update_function_configuration_args)  
+  try:
+    lda.update_function_configuration(**update_function_configuration_args)
+    print("Function configuration updated.")
+  except (ClientError, ParamValidationError) as e:
+    raise UpdateFunctionException("Function not updated: " % e.__str__())
 
 def update_function_code(args):
   project_name = get_project_name()
@@ -254,8 +259,10 @@ def update_function_code(args):
     'FunctionName': project_name,
     'ZipFile': get_zip_file_bytes(ids['artifactId'])
   }
-
-  lda.update_function_code(**update_function_code_args)
+  try:
+    lda.update_function_code(**update_function_code_args)
+  except (ClientError, ParamValidationError) as e:
+    raise UpdateCodeException("Function code not updated: " % e.__str__())
 
 def update_project(args):
   try:
@@ -263,7 +270,7 @@ def update_project(args):
     root = add_project_dependencies(root,args.dependencies)
     write_xml(root, 'pom.xml')
   except:
-    raise Exception(
+    raise UpdateProjectException(
             "Unable to modify project pom.xml. " +\
             "Dependencies not added."
           )
@@ -272,7 +279,9 @@ def get_project_name():
   if isfile("pom.xml"):
     return getcwd().split("/")[-1]
   else:
-    raise NoPomException
+    raise NoPomException(
+      "No POM found in working directory. Are you in a project directory?"
+    )
 
 def get_project_dependencies():
   project_dependencies = []
@@ -288,157 +297,3 @@ def get_valid_aws_sdk_dependencies():
   bom = fromstring(bom)
   valid_dependencies = get_aws_dependencies(bom,BOM_PATH)
   return valid_dependencies
-
-def main():
-  parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
-  subparsers = parser.add_subparsers(
-      help='Add -h after subcommand for more detailed help.'
-    )
-  
-  valid_aws_sdk_dependencies = get_valid_aws_sdk_dependencies()
-
-  #################
-  # INIT_FUNCTION #
-  #################
-  # Create the AWS Lambda function.
-
-  parser_init_function = subparsers.add_parser(
-      'init-function',
-      help='Create a Lambda function, using target jar.'
-    )
-  parser_init_function.add_argument(
-      '--role',
-      help='Lambda execution role.'
-    )
-  parser_init_function.add_argument(
-      '--profile',
-      help='Configuration profile (as defined in the shared\
-            credentials file) for Lambda operations.'
-    )
-  parser_init_function.add_argument(
-      '--region',
-      help='Custom region for Lambda operations.'
-    )
-  parser_init_function.set_defaults(process=init_function)
-
-  ################
-  # INIT_PROJECT #
-  ################
-  # Create the project directory with template POM and handler source.
-
-  parser_init_project = subparsers.add_parser(
-      'init-project',
-      help='Create a project directory with template POM and handler class.'
-    )
-  parser_init_project.add_argument(
-      '--project-name',
-      help='Name of the project.',
-      default='easylambda_demo'
-    )
-
-  # The default group-id and artifact-id match those in the template POM
-  # distributed with easylambda.
-  parser_init_project.add_argument(
-      '--group-id',
-      help='Used as package name.',
-      default='com.example'
-    )
-  parser_init_project.add_argument(
-      '--artifact-id',
-      help='Used as jar name, and should be same as project name.',
-      default='demo'
-    )
-  parser_init_project.add_argument(
-      '--dependencies',
-      help='A list of AWS SDK dependencies, e.g.\
-             \'s3\', \'dynamodb\', \'kinesis\'.',
-      nargs='*', 
-      choices=valid_aws_sdk_dependencies,
-      default=[]
-    )
-  parser_init_project.set_defaults(process=init_project)
-
-  #################################
-  # UPDATE_FUNCTION_CONFIGURATION #
-  #################################
-  # Update properties of the function, e.g. memory-size.  
-
-  parser_update_function_configuration = \
-    subparsers.add_parser(
-      'update-function-configuration', 
-      help='Conveniently update several function parameters.\
-          for more complete customization, use the AWS CLI.'
-    )
-  parser_update_function_configuration.add_argument(
-      '--memory-size', 
-      help='The function\'s memory and CPU, 0 to 3008.', default=512
-    )
-  parser_update_function_configuration.add_argument(
-      '--timeout',
-      help='Function timeout, in seconds (0-300).',
-      default=45
-    )
-  parser_update_function_configuration.add_argument(
-      '--tracing-config',
-      help='X-ray tracing option.',
-      choices=['Active','PassThrough']
-    )
-  parser_update_function_configuration.add_argument(
-      '--profile',
-      help='Configuration profile (as defined in the shared\
-            credentials file) for lambda operations.'
-    )
-  parser_update_function_configuration.add_argument(
-      '--region',
-      help='Custom region for lambda operations.'
-    )
-  parser_update_function_configuration.set_defaults(
-      process=update_function_configuration
-    )
-
-  ########################
-  # UPDATE_FUNCTION_CODE #
-  ########################
-  # Rebuild jar (with mvn) and upload function code (with boto).
-  
-  parser_update_function_code = subparsers.add_parser(
-      'update-function-code',
-      help='Upload the latest jar (target/<artifactId>-SNAPSHOT-1.0.jar).'
-    )
-  parser_update_function_code.add_argument(
-      '--profile',
-      help='Configuration profile (as defined in the shared\
-            credentials file) for Lambda operations.'
-    )
-  parser_update_function_code.add_argument(
-      '--region',
-      help='Custom region for lambda operations.'
-    )
-  parser_update_function_code.set_defaults(process=update_function_code)
-
-
-  ##################
-  # UPDATE_PROJECT #
-  ##################
-  # Add AWS SDK dependencies
-
-  parser_update_project = subparsers.add_parser(
-      'update-project',
-      help='Add new AWS SDK dependencies to the project.'
-    )
-  parser_update_project.add_argument(
-      '--dependencies',
-      help='A list of AWS SDK dependencies e.g.\
-             \'s3\', \'dynamodb\', \'kinesis\'.',
-      nargs='*',
-      choices=valid_aws_sdk_dependencies
-    )
-  parser_update_project.set_defaults(process=update_project)
-
-  # Parse and execute command.
-
-  args = parser.parse_args()
-  args.process(args)
-
-if __name__=="__main__":
-  main()

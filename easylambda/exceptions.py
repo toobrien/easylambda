@@ -1,19 +1,23 @@
-class NoPomException(Exception):
-  msg = 'No POM found in working directory. Are you in a project directory?'
+class EasyJavaException(Exception):
   def __str__(self):
     return self.msg
-  def __init__(self):
-    if msg:
-      slf.msg = msg 
+  def __init__(self, msg):
+    self.msg = msg
+
+class NoPomException(EasyJavaException):
+  pass
 
 class InitFunctionException(Exception):
-  def __str__(self):
-    return self.msg
-  def __init__(self, msg):
-    self.msg = msg
+  pass
 
 class InitProjectException(Exception):
-  def __str__(self):
-    return self.msg
-  def __init__(self, msg):
-    self.msg = msg
+  pass
+
+class UpdateConfigurationException(Exception):
+  pass
+
+class UpdateCodeException(Exception):
+  pass
+
+class UpdateProjectException(Exception):
+  pass

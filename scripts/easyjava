@@ -1,15 +1,19 @@
 #!/usr/bin/python
 
-import easylambda 
+from easylambda import easyjava
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 if __name__=="__main__":
-  parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
+  parser = ArgumentParser(
+    formatter_class=RawDescriptionHelpFormatter,
+    description="easyjava: initialize and configure Java " +\
+      "AWS Lambda functions quickly and easily."
+  )
   subparsers = parser.add_subparsers(
       help='Add -h after subcommand for more detailed help.'
     )
   
-  valid_aws_sdk_dependencies = easylambda.get_valid_aws_sdk_dependencies()
+  valid_aws_sdk_dependencies = easyjava.get_valid_aws_sdk_dependencies()
 
   #################
   # INIT_FUNCTION #
@@ -33,7 +37,7 @@ if __name__=="__main__":
       '--region',
       help='Custom region for Lambda operations.'
     )
-  parser_init_function.set_defaults(process=easylambda.init_function)
+  parser_init_function.set_defaults(process=easyjava.init_function)
 
   ################
   # INIT_PROJECT #
@@ -70,7 +74,7 @@ if __name__=="__main__":
       choices=valid_aws_sdk_dependencies,
       default=[]
     )
-  parser_init_project.set_defaults(process=easylambda.init_project)
+  parser_init_project.set_defaults(process=easyjava.init_project)
 
   #################################
   # UPDATE_FUNCTION_CONFIGURATION #
@@ -107,7 +111,7 @@ if __name__=="__main__":
       help='Custom region for lambda operations.'
     )
   parser_update_function_configuration.set_defaults(
-      process=easylambda.update_function_configuration
+      process=easyjava.update_function_configuration
     )
 
   ########################
@@ -129,7 +133,7 @@ if __name__=="__main__":
       help='Custom region for lambda operations.'
     )
   parser_update_function_code.set_defaults(
-      process=easylambda.update_function_code
+      process=easyjava.update_function_code
     )
 
 
@@ -150,7 +154,7 @@ if __name__=="__main__":
       choices=valid_aws_sdk_dependencies
     )
   parser_update_project.set_defaults(
-      process=easylambda.update_project
+      process=easyjava.update_project
     )
 
   # Parse and execute command.
