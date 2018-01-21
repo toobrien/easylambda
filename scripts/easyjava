@@ -26,6 +26,7 @@ if __name__=="__main__":
     )
   parser_init_function.add_argument(
       '--role',
+      required=True,
       help='Lambda execution role.'
     )
   parser_init_function.add_argument(
@@ -89,12 +90,13 @@ if __name__=="__main__":
     )
   parser_update_function_configuration.add_argument(
       '--memory-size', 
-      help='The function\'s memory and CPU, 0 to 3008.', default=512
+      help='The function\'s memory and CPU, 0 to 3008.', 
+      type=int
     )
   parser_update_function_configuration.add_argument(
       '--timeout',
       help='Function timeout, in seconds (0-300).',
-      default=45
+      type=int
     )
   parser_update_function_configuration.add_argument(
       '--tracing-config',

@@ -3,7 +3,8 @@
 from easylambda import __path__
 from easylambda.exceptions import \
   NoPomException, InitProjectException,\
-  InitFunctionException
+  InitFunctionException, UpdateConfigurationException,\
+  UpdateCodeException, UpdateProjectException
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import makedirs, getcwd, chdir
 from os.path import isfile
@@ -234,20 +235,20 @@ def update_function_configuration(args):
     'FunctionName': project_name
   }
 
-  if memory_size in args:
+  if args.memory_size != None:
     update_function_configuration_args['MemorySize'] = args.memory_size
-  if timeout in args:
+  if args.timeout != None:
     update_function_configuration_args['Timeout'] = args.timeout
-  if tracing_config in args:
+  if args.tracing_config != None:
     update_function_configuration_args['TracingConfig'] = {
         'Mode': args.tracing_config
     }
   
   try:
     lda.update_function_configuration(**update_function_configuration_args)
-    print("Function configuration updated.")
+    print("Function configuration successfully updated.")
   except (ClientError, ParamValidationError) as e:
-    raise UpdateFunctionException("Function not updated: " % e.__str__())
+    raise UpdateConfigurationException("Function not updated: %s" % e.__str__())
 
 def update_function_code(args):
   project_name = get_project_name()
@@ -260,7 +261,8 @@ def update_function_code(args):
     'ZipFile': get_zip_file_bytes(ids['artifactId'])
   }
   try:
-    lda.update_function_code(**update_function_code_args)
+    resp = lda.update_function_code(**update_function_code_args)
+    print("Function code successfully update: %s" % resp['CodeSha256'])
   except (ClientError, ParamValidationError) as e:
     raise UpdateCodeException("Function code not updated: " % e.__str__())
 

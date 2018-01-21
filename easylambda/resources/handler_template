@@ -2,7 +2,7 @@ package easylambda;
 
 import com.amazonaws.services.lambda.runtime.Context;
 
-class Handler {
+public class Handler {
   
   public Handler() {
 

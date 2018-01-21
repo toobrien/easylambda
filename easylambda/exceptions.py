@@ -2,22 +2,23 @@ class EasyJavaException(Exception):
   def __str__(self):
     return self.msg
   def __init__(self, msg):
-    self.msg = msg
+    if msg:
+      self.msg = msg
 
 class NoPomException(EasyJavaException):
   pass
 
-class InitFunctionException(Exception):
+class InitFunctionException(EasyJavaException):
   pass
 
-class InitProjectException(Exception):
+class InitProjectException(EasyJavaException):
   pass
 
-class UpdateConfigurationException(Exception):
+class UpdateConfigurationException(EasyJavaException):
   pass
 
-class UpdateCodeException(Exception):
+class UpdateCodeException(EasyJavaException):
   pass
 
-class UpdateProjectException(Exception):
+class UpdateProjectException(EasyJavaException):
   pass
