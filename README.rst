@@ -38,11 +38,11 @@ You can adjust a few configuration options for your Lambda function:
 
 Altogether, easylambda provides five subcommands:
 
-  init-project: creates the initial project directory
-  update-project: add new AWS SDK modules to the project dependencies
-  init-function: creates the AWS Lambda function
-  update-function-code: after updating your code, repackage with maven then run this command
-  update-function-configuration: change timeout, memory size, etc.
+  * init-project: creates the initial project directory
+  * update-project: add new AWS SDK modules to the project dependencies
+  * init-function: creates the AWS Lambda function
+  * update-function-code: after updating your code, repackage with maven then run this command
+  * update-function-configuration: change timeout, memory size, etc.
 
 To read a more complete description of each, run
 
