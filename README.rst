@@ -14,7 +14,7 @@ First, install the package:
 
 Next, initialize a project:
 
-  easyjava initialize-project --project-name demo
+  easyjava init-project --project-name demo
 
 This command creates a project directory ("demo") with a template POM and handler file. Edit the handler (src/main/java/<groupId>/Handler.java), change into the project directory, and package your code with
 
