@@ -1,5 +1,5 @@
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(
   name="easylambda",
@@ -12,5 +12,9 @@ setup(
         'resources/handler_template'
       ]
   },
+  install_requires=[
+    'boto3',
+    'enum',
+  ],
   scripts=['scripts/easyjava']
 )
