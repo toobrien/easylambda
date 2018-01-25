@@ -78,11 +78,11 @@ def add_project_dependencies(root, to_add):
     for dependency in to_add:
       if dependency not in project_dependencies:
         artifactIdString = 'aws-java-sdk-' + dependency
-        dep = SubElement(deps,"dependency")
-        artifactId = SubElement(dep,"artifactId")
+        dep = SubElement(deps,'dependency')
+        artifactId = SubElement(dep,'artifactId')
         artifactId.text = artifactIdString
-        groupId = SubElement(dep,"groupId")
-        groupId.text = "com.amazonaws"
+        groupId = SubElement(dep,'groupId')
+        groupId.text = 'com.amazonaws'
   except TypeError:
     # if no supplieddependencies, for loop will raise TypeError
     pass
@@ -110,7 +110,7 @@ def get_zip_file_bytes(artifactId):
       return f.read()
   except:
     # should be to stderr?
-    print("Unable to read jar. Did you run 'mvn package' first?")
+    print('Unable to read jar. Did you run "mvn package" first?')
     raise
 
 def init_function(args):
@@ -138,7 +138,7 @@ def init_function(args):
     create_function_args['Role'] = args.role
   else:
     raise InitFunctionException(
-            "No role found. Please supply one with --role."
+            'No role found. Please supply one with --role.'
           )
   create_function_args['Timeout'] = 40
   create_function_args['MemorySize'] = 512
@@ -146,9 +146,9 @@ def init_function(args):
   # arguments ready, create the function
   try:
     resp = lda.create_function(**create_function_args)
-    print("Function created: %s" % resp['FunctionArn']) 
+    print('Function created: %s' % resp['FunctionArn']) 
   except (ClientError, ParamValidationError) as e:
-    raise InitFunctionException("Function not created: " + e.__str__())
+    raise InitFunctionException('Function not created: ' + e.__str__())
 
 def init_project(args):
   module_path = __path__[0]
@@ -160,27 +160,27 @@ def init_project(args):
     makedirs('/'.join(['.',project_path,src_path]))
   except OSError as e:
     raise InitProjectException(
-            "Unable to create project directory: " +\
+            'Unable to create project directory: ' +\
             e.__str__() +\
-            "\n Project not initialized."
+            '\n Project not initialized.'
           )
 
   try:
     copyfile(
-      '/'.join([module_path,"resources/handler_template"]), 
+      '/'.join([module_path,'resources/handler_template']), 
       '/'.join(['.',project_path,src_path,'Handler.java'])
     )
     copyfile(
-      '/'.join([module_path,"resources/pom_template"]), 
+      '/'.join([module_path,'resources/pom_template']), 
       '/'.join(['.',project_path,'pom.xml'])
     ) 
   except IOError as e:
     raise InitProjectException(
-            "Unable to copy template POM or Handler from " +\
+            'Unable to copy template POM or Handler from ' +\
             module_path +\
-            "/resources/: " +\
+            '/resources/: ' +\
             e.__str__() +\
-            "\nProject not initialized."
+            '\nProject not initialized.'
           )
  
   # change into project directory
@@ -204,9 +204,9 @@ def init_project(args):
   except Exception as e:
     print(e)
     raise InitProjectException(
-            "Unable to modify project pom.xml: " +\
+            'Unable to modify project pom.xml: ' +\
             e.__str__() +\
-            "\nProject not initialized."
+            '\nProject not initialized.'
           )
 
   # Update template Handler with groupId as package name
@@ -221,9 +221,9 @@ def init_project(args):
       f.truncate()
   except Exception as e:
     raise InitProjectException(
-            "Unable to modify template Handler: " +\
+            'Unable to modify template Handler: ' +\
             e.__str__() +\
-            "\nProject not initialized."
+            '\nProject not initialized.'
           )
 
 def update_function_configuration(args):
@@ -246,9 +246,9 @@ def update_function_configuration(args):
   
   try:
     lda.update_function_configuration(**update_function_configuration_args)
-    print("Function configuration successfully updated.")
+    print('Function configuration successfully updated.')
   except (ClientError, ParamValidationError) as e:
-    raise UpdateConfigurationException("Function not updated: %s" % e.__str__())
+    raise UpdateConfigurationException('Function not updated: %s' % e.__str__())
 
 def update_function_code(args):
   project_name = get_project_name()
@@ -262,9 +262,9 @@ def update_function_code(args):
   }
   try:
     resp = lda.update_function_code(**update_function_code_args)
-    print("Function code successfully update: %s" % resp['CodeSha256'])
+    print('Function code successfully update: %s' % resp['CodeSha256'])
   except (ClientError, ParamValidationError) as e:
-    raise UpdateCodeException("Function code not updated: " % e.__str__())
+    raise UpdateCodeException('Function code not updated: ' % e.__str__())
 
 def update_project(args):
   try:
@@ -273,23 +273,23 @@ def update_project(args):
     write_xml(root, 'pom.xml')
   except:
     raise UpdateProjectException(
-            "Unable to modify project pom.xml. " +\
-            "Dependencies not added."
+            'Unable to modify project pom.xml. ' +\
+            'Dependencies not added.'
           )
 
 def get_project_name():
-  if isfile("pom.xml"):
+  if isfile('pom.xml'):
     return getcwd().split("/")[-1]
   else:
     raise NoPomException(
-      "No POM found in working directory. Are you in a project directory?"
+      'No POM found in working directory. Are you in a project directory?'
     )
 
 def get_project_dependencies():
   project_dependencies = []
   
-  if isfile("pom.xml"):
-    pom = read_xml("pom.xml")
+  if isfile('pom.xml'):
+    pom = read_xml('pom.xml')
     project_dependencies = get_aws_dependencies(pom,POM_PATH)
 
   return project_dependencies
